@@ -1,46 +1,58 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:presupuesto_al_dia/core/services/notification_service.dart';
-import 'package:presupuesto_al_dia/core/utils/formatters.dart';
 import 'package:presupuesto_al_dia/features/agenda/models/cita_model.dart';
-import 'package:presupuesto_al_dia/features/presupuestos/models/material_item_model.dart';
+import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_estado.dart';
+import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_item_model.dart';
 import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_model.dart';
 
 void main() {
-  test('Cálculo correcto de subtotales y modelos de presupuesto', () {
-    final mat1 = MaterialItemModel(
-      descripcion: 'Cable unipolar 2.5mm',
-      cantidad: 50,
+  test('Cálculo correcto de subtotales y modelos de presupuesto con items', () {
+    final item1 = PresupuestoItemModel(
+      descripcion: 'Cable 4mm',
+      cantidad: 5,
       unidad: 'mts.',
-      precioUnitario: 1200,
+      precioUnitario: 5000,
     );
 
-    final mat2 = MaterialItemModel(
-      descripcion: 'Disyuntor bipolar 25A',
-      cantidad: 2,
-      unidad: 'un.',
-      precioUnitario: 25000,
+    final item2 = PresupuestoItemModel(
+      descripcion: '50 Tarugos y tornillos',
+      cantidad: 1,
+      unidad: 'global',
+      precioUnitario: 30000,
     );
 
-    expect(mat1.subtotal, 60000.0);
-    expect(mat2.subtotal, 50000.0);
+    expect(item1.subtotal, 25000.0);
+    expect(item2.subtotal, 30000.0);
 
-    final total = mat1.subtotal + mat2.subtotal;
-    expect(total, 110000.0);
+    final total = item1.subtotal + item2.subtotal;
+    expect(total, 55000.0);
 
     final presupuesto = PresupuestoModel(
-      numeroPresupuesto: 'PRE-2026-0001',
+      numeroPresupuesto: '#P-0001',
       nombreCliente: 'Carlos Test',
       direccion: 'Av. Corrientes 1234',
       celular: '+549111111111',
       fechaEmision: DateTime(2026, 11, 13),
-      descripcionTrabajo: 'Renovación de tablero general',
+      estado: 'BORRADOR',
+      descripcionTrabajo: 'CABLEAR TODO EL TECHO',
       total: total,
-      materiales: [mat1, mat2],
+      items: [item1, item2],
     );
 
-    expect(presupuesto.total, 110000.0);
-    expect(presupuesto.materiales.length, 2);
-    expect(Formatters.formatNumber(50), '50');
+    expect(presupuesto.numero, '#P-0001');
+    expect(presupuesto.total, 55000.0);
+    expect(presupuesto.items.length, 2);
+    expect(presupuesto.estadoEnum, EstadoPresupuesto.borrador);
+    expect(PresupuestoModel.estadosValidos.length, 5);
+  });
+
+  test('Mapeo de los 5 estados obligatorios de presupuesto', () {
+    for (final estadoStr in PresupuestoModel.estadosValidos) {
+      final estado = EstadoPresupuesto.desdeString(estadoStr);
+      expect(estado.clave, estadoStr);
+      expect(estado.colorTexto, isNotNull);
+      expect(estado.colorFondo, isNotNull);
+    }
   });
 
   test('Modelo Cita y formateo de alarmas locales', () {

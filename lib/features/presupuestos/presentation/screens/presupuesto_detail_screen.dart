@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:presupuesto_al_dia/core/theme/app_theme.dart';
 import 'package:presupuesto_al_dia/core/utils/formatters.dart';
-import 'package:presupuesto_al_dia/core/widgets/glass_container.dart';
 import 'package:presupuesto_al_dia/features/perfil_pdf/data/perfil_repository.dart';
 import 'package:presupuesto_al_dia/features/perfil_pdf/models/perfil_model.dart';
 import 'package:presupuesto_al_dia/features/perfil_pdf/presentation/screens/pdf_preview_screen.dart';
 import 'package:presupuesto_al_dia/features/perfil_pdf/services/pdf_service.dart';
 import 'package:presupuesto_al_dia/features/presupuestos/data/presupuestos_repository.dart';
+import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_estado.dart';
 import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_model.dart';
 import 'package:presupuesto_al_dia/features/presupuestos/presentation/screens/presupuesto_form_screen.dart';
 import 'package:presupuesto_al_dia/features/presupuestos/presentation/widgets/estado_badge.dart';
@@ -27,6 +26,14 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
   PresupuestoModel? _presupuesto;
   PerfilModel? _perfil;
   bool _isLoading = true;
+
+  // Paleta minimalista modo claro
+  static const Color orangeAccent = Color(0xFFFF6B00);
+  static const Color greenAccent = Color(0xFF10B981);
+  static const Color violetAccent = Color(0xFF7C3AED);
+  static const Color borderColor = Color(0xFFE5E7EB);
+  static const Color textDark = Color(0xFF111827);
+  static const Color textGray = Color(0xFF6B7280);
 
   @override
   void initState() {
@@ -51,10 +58,11 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
     await _repo.updateEstado(_presupuesto!.id!, nuevoEstado);
     await _loadData();
     if (mounted) {
+      final estadoEnum = EstadoPresupuesto.desdeString(nuevoEstado);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Estado actualizado a $nuevoEstado'),
-          backgroundColor: AppColors.getEstadoColor(nuevoEstado),
+          content: Text('Estado actualizado a ${estadoEnum.nombre}'),
+          backgroundColor: estadoEnum.colorTexto,
         ),
       );
     }
@@ -65,46 +73,50 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.bgDarkSecondary,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Cambiar Estado del Presupuesto',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              const SizedBox(height: 16),
-              ...PresupuestoModel.estadosValidos.map((st) {
-                final isCurrent = _presupuesto!.estado == st;
-                final color = AppColors.getEstadoColor(st);
-                return ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  leading: CircleAvatar(
-                    radius: 8,
-                    backgroundColor: color,
-                  ),
-                  title: Text(
-                    st,
-                    style: TextStyle(
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                      color: isCurrent ? color : Colors.white,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Cambiar Estado del Presupuesto',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textDark),
+                ),
+                const SizedBox(height: 12),
+                ...PresupuestoModel.estadosValidos.map((st) {
+                  final isCurrent = _presupuesto!.estado == st;
+                  final estadoEnum = EstadoPresupuesto.desdeString(st);
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 6,
+                      backgroundColor: estadoEnum.colorTexto,
                     ),
-                  ),
-                  trailing: isCurrent ? Icon(Icons.check, color: color) : null,
-                  onTap: () {
-                    Navigator.pop(context);
-                    _changeEstado(st);
-                  },
-                );
-              }),
-            ],
+                    title: Text(
+                      estadoEnum.nombre,
+                      style: TextStyle(
+                        fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                        color: isCurrent ? estadoEnum.colorTexto : textDark,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: isCurrent ? Icon(Icons.check, color: estadoEnum.colorTexto, size: 20) : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _changeEstado(st);
+                    },
+                  );
+                }),
+              ],
+            ),
           ),
         );
       },
@@ -117,18 +129,25 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgDarkSecondary,
-        title: const Text('¿Eliminar Presupuesto?'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('¿Eliminar Presupuesto?', style: TextStyle(color: textDark, fontWeight: FontWeight.bold)),
         content: Text(
-            'Se borrará el presupuesto ${_presupuesto!.numeroPresupuesto} y todos sus materiales asociados.'),
+          'Se eliminará ${_presupuesto!.numeroPresupuesto} y todos sus ítems asociados de forma permanente.',
+          style: const TextStyle(color: textGray, fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('Cancelar', style: TextStyle(color: textGray)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.estadoCancelado),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -146,13 +165,15 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const GlassScaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.orange)),
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: orangeAccent)),
       );
     }
 
     if (_presupuesto == null) {
-      return GlassScaffold(
+      return Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Presupuesto')),
         body: const Center(child: Text('Presupuesto no encontrado')),
       );
@@ -160,13 +181,21 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
 
     final p = _presupuesto!;
 
-    return GlassScaffold(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text(p.numeroPresupuesto),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        title: Text(
+          p.numeroPresupuesto,
+          style: const TextStyle(color: textDark, fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        iconTheme: const IconThemeData(color: textDark),
         actions: [
           IconButton(
             tooltip: 'Editar',
-            icon: const Icon(Icons.edit_rounded, color: AppColors.orange),
+            icon: const Icon(Icons.edit_outlined, color: textDark, size: 20),
             onPressed: () async {
               final res = await Navigator.push(
                 context,
@@ -181,17 +210,26 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
           ),
           IconButton(
             tooltip: 'Eliminar',
-            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.estadoCancelado),
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
             onPressed: _deletePresupuesto,
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: borderColor, height: 1),
+        ),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         children: [
-          // Banner de Estado y Acciones Rápidas
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
+          // Banner de Estado y Botones de Acción
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
             child: Column(
               children: [
                 Row(
@@ -199,23 +237,22 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
                   children: [
                     InkWell(
                       onTap: _showEstadoDialog,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(6),
                       child: Row(
                         children: [
-                          EstadoBadge(estado: p.estado, fontSize: 13),
+                          EstadoBadge(estado: p.estado, fontSize: 12),
                           const SizedBox(width: 4),
-                          const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                          const Icon(Icons.arrow_drop_down, color: textGray, size: 18),
                         ],
                       ),
                     ),
                     Text(
                       Formatters.formatDate(p.fechaEmision),
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: const TextStyle(color: textGray, fontSize: 12),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                // Botones directos de PDF y WhatsApp
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -227,18 +264,21 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
                             perfil: _perfil!,
                           );
                         },
-                        icon: const Icon(Icons.send_rounded, size: 18),
-                        label: const Text('WhatsApp'),
+                        icon: const Icon(Icons.send_rounded, size: 16),
+                        label: const Text('Enviar WhatsApp'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.green,
+                          backgroundColor: greenAccent,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: ElevatedButton.icon(
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           if (_perfil == null) return;
                           Navigator.push(
@@ -251,12 +291,14 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
                             ),
                           );
                         },
-                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
                         label: const Text('Ver PDF'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.violet,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: textDark,
+                          side: const BorderSide(color: borderColor),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
@@ -265,95 +307,80 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Datos del Cliente
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.person_pin_rounded, color: AppColors.orange, size: 20),
-                    SizedBox(width: 8),
-                    Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Icon(Icons.person_outline, size: 16, color: orangeAccent),
+                    SizedBox(width: 6),
+                    Text('Cliente', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textDark)),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Text(
                   p.nombreCliente,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textDark),
                 ),
                 if (p.direccion.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 15, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(p.direccion, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                      ),
-                    ],
-                  ),
+                  Text(p.direccion, style: const TextStyle(fontSize: 13, color: textGray)),
                 ],
                 if (p.celular.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone_outlined, size: 15, color: AppColors.green),
-                      const SizedBox(width: 4),
-                      Text(p.celular, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                    ],
-                  ),
+                  Text('Cel: ${p.celular}', style: const TextStyle(fontSize: 13, color: textGray)),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  'Validez de la oferta: ${p.validezDias} días',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Tareas a realizar
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.build_circle_rounded, color: AppColors.green, size: 20),
-                    SizedBox(width: 8),
-                    Text('Tareas a Realizar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Icon(Icons.handyman_outlined, size: 16, color: greenAccent),
+                    SizedBox(width: 6),
+                    Text('Tareas a Realizar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textDark)),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(10),
-                    border: const Border(
-                      left: BorderSide(color: AppColors.orange, width: 3.5),
-                    ),
-                  ),
-                  child: Text(
-                    p.descripcionTrabajo,
-                    style: const TextStyle(fontSize: 14, height: 1.4),
-                  ),
+                const SizedBox(height: 8),
+                Text(
+                  p.descripcionTrabajo,
+                  style: const TextStyle(fontSize: 13, height: 1.4, color: textDark),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // Detalle de Materiales
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
+          // Lista de Materiales e Ítems
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -362,19 +389,19 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.format_list_bulleted_rounded, color: AppColors.violet, size: 20),
-                        SizedBox(width: 8),
-                        Text('Detalle de Materiales', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        Icon(Icons.format_list_bulleted_rounded, size: 16, color: violetAccent),
+                        SizedBox(width: 6),
+                        Text('Materiales y Trabajos', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textDark)),
                       ],
                     ),
                     Text(
-                      '${p.materiales.length} ítems',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      '${p.items.length} ${p.items.length == 1 ? "ítem" : "ítems"}',
+                      style: const TextStyle(fontSize: 12, color: textGray),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                ...p.materiales.map((m) {
+                ...p.items.map((item) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
@@ -382,50 +409,49 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${Formatters.formatNumber(m.cantidad)} ${m.unidad}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            '${Formatters.formatNumber(item.cantidad)} ${item.unidad}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textDark),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(m.descripcion, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                              Text(item.descripcion, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textDark)),
                               Text(
-                                'Unit: ${Formatters.formatCurrency(m.precioUnitario)}',
-                                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                'Unit: ${Formatters.formatCurrency(item.precioUnitario)}',
+                                style: const TextStyle(fontSize: 11, color: textGray),
                               ),
                             ],
                           ),
                         ),
                         Text(
-                          Formatters.formatCurrency(m.subtotal),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                          Formatters.formatCurrency(item.subtotal),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: textDark),
                         ),
                       ],
                     ),
                   );
                 }),
-                const Divider(color: AppColors.glassBorder, height: 24),
-                // Total
+                const Divider(color: borderColor, height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'TOTAL:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: textDark),
                     ),
                     Text(
                       Formatters.formatCurrency(p.total),
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.green,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: greenAccent,
                       ),
                     ),
                   ],
@@ -433,10 +459,9 @@ class _PresupuestoDetailScreenState extends State<PresupuestoDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 }
-

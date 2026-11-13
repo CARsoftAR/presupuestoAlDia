@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:presupuesto_al_dia/core/theme/app_theme.dart';
+import 'package:presupuesto_al_dia/features/presupuestos/models/presupuesto_estado.dart';
 
 class EstadoBadge extends StatelessWidget {
   final String estado;
@@ -10,39 +10,42 @@ class EstadoBadge extends StatelessWidget {
     super.key,
     required this.estado,
     this.fontSize = 11,
-    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.getEstadoColor(estado);
+    final estadoEnum = EstadoPresupuesto.desdeString(estado);
 
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
+        color: estadoEnum.colorFondo,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: estadoEnum.colorTexto.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 6,
+            height: 6,
             decoration: BoxDecoration(
-              color: color,
+              color: estadoEnum.colorTexto,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 5),
           Text(
-            estado.toUpperCase(),
+            estadoEnum.nombre.toUpperCase(),
             style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
+              color: estadoEnum.colorTexto,
+              fontWeight: FontWeight.w700,
               fontSize: fontSize,
-              letterSpacing: 0.4,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -50,4 +53,3 @@ class EstadoBadge extends StatelessWidget {
     );
   }
 }
-
